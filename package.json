@@ -1,0 +1,28 @@
+{
+  "name": "lgtuim",
+  "version": "0.1.0",
+  "description": "TUI application for reviewing markdown plans with line-by-line commenting",
+  "module": "src/cli.ts",
+  "type": "module",
+  "bin": {
+    "lgtuim": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "show": "bun run src/cli.ts show",
+    "spawn": "bun run src/cli.ts spawn"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "ink": "^6.6.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^19.2.7"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
