@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
+import path from 'path';
 import type { CanvasOptions, CommentFilter, CommentType, ViewMode } from './types';
 import { COMMENT_TYPE_ORDER, FILTER_OPTIONS } from './constants';
 import { useDocument } from './hooks/use-document';
@@ -64,6 +65,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [exportedPath, setExportedPath] = useState<string | null>(null);
 
   // Adjust scroll offset when selected line changes
   useEffect(() => {
@@ -92,6 +94,23 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
       await copyToClipboard(text);
     }
   }, [document, comments, copyToClipboard]);
+
+  const handleExport = useCallback(async () => {
+    if (!document) return;
+
+    const text = formatFeedbackForExport(document.name, comments);
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath, path.extname(filePath));
+    const exportPath = path.join(dir, `${basename}-feedback.md`);
+
+    try {
+      await Bun.write(exportPath, text);
+      setExportedPath(exportPath);
+      setTimeout(() => setExportedPath(null), 3000);
+    } catch (err) {
+      // Export failed silently
+    }
+  }, [document, comments, filePath]);
 
   const cycleFilter = useCallback(() => {
     const currentIndex = FILTER_OPTIONS.findIndex((opt) => opt.value === filter);
@@ -138,6 +157,11 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
 
     if (input === 'y') {
       handleCopy();
+      return;
+    }
+
+    if (input === 'E') {
+      handleExport();
       return;
     }
 
@@ -289,6 +313,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
           totalComments={comments.length}
           unresolvedCount={getUnresolvedCount()}
           copied={copied}
+          exported={exportedPath}
         />
         <SummaryView documentName={document.name} comments={comments} />
       </Box>
@@ -304,6 +329,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
         totalComments={comments.length}
         unresolvedCount={getUnresolvedCount()}
         copied={copied}
+        exported={exportedPath}
       />
       <Box flexDirection="row" flexGrow={1}>
         <Box flexGrow={1}>

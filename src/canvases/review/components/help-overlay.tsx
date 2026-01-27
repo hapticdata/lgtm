@@ -45,6 +45,7 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
         <Text><Text color="green">0-6</Text>    Quick filter (0=all, 1-6=type)</Text>
         <Text><Text color="green">v</Text>      Toggle summary view</Text>
         <Text><Text color="green">y</Text>      Copy to clipboard</Text>
+        <Text><Text color="green">E</Text>      Export to file</Text>
         <Text><Text color="green">s</Text>      Save session</Text>
         <Text><Text color="green">?</Text>      Toggle help</Text>
         <Text><Text color="green">q/Esc</Text>  Quit</Text>

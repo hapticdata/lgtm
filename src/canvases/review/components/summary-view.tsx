@@ -8,6 +8,11 @@ interface SummaryViewProps {
   comments: Comment[];
 }
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 3) + '...';
+}
+
 function groupCommentsByType(comments: Comment[]): Map<CommentType, Comment[]> {
   const groups = new Map<CommentType, Comment[]>();
 
@@ -52,6 +57,9 @@ export function SummaryView({ documentName, comments }: SummaryViewProps) {
                   <Text dimColor>L{comment.lineNumber}:</Text>
                   {comment.resolved && <Text color="green"> [RESOLVED]</Text>}
                 </Text>
+                <Box paddingLeft={1}>
+                  <Text dimColor italic>"{truncate(comment.lineContent.trim(), 60)}"</Text>
+                </Box>
                 <Text wrap="wrap">{comment.content}</Text>
               </Box>
             ))}
@@ -64,7 +72,7 @@ export function SummaryView({ documentName, comments }: SummaryViewProps) {
       )}
 
       <Box marginTop={2}>
-        <Text dimColor>Press 'v' to return to document view, 'y' to copy</Text>
+        <Text dimColor>Press 'v' to return, 'y' to copy, 'E' to export to file</Text>
       </Box>
     </Box>
   );

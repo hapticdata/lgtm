@@ -4,6 +4,8 @@ import TextInput from 'ink-text-input';
 import type { CommentType } from '../types';
 import { COMMENT_TYPE_CONFIG, COMMENT_TYPE_ORDER } from '../constants';
 
+type FormField = 'typeSelector' | 'commentInput';
+
 interface CommentFormProps {
   lineNumber: number;
   lineContent: string;
@@ -23,7 +25,7 @@ export function CommentForm({
 }: CommentFormProps) {
   const [selectedType, setSelectedType] = useState<CommentType>(initialType);
   const [content, setContent] = useState(initialContent);
-  const [isTyping, setIsTyping] = useState(false);
+  const [focusedField, setFocusedField] = useState<FormField>('commentInput');
 
   const handleSubmit = useCallback(() => {
     if (content.trim()) {
@@ -32,18 +34,30 @@ export function CommentForm({
   }, [content, selectedType, onSubmit]);
 
   useInput((input, key) => {
-    if (isTyping) return;
-
     if (key.escape) {
       onCancel();
       return;
     }
 
-    // Number keys for type selection
-    const typeIndex = parseInt(input, 10) - 1;
-    if (typeIndex >= 0 && typeIndex < COMMENT_TYPE_ORDER.length) {
-      setSelectedType(COMMENT_TYPE_ORDER[typeIndex]!);
+    // Tab navigation between fields
+    if (key.tab) {
+      if (key.shift) {
+        // Shift+Tab: cycle backward
+        setFocusedField((prev) => (prev === 'commentInput' ? 'typeSelector' : 'commentInput'));
+      } else {
+        // Tab: cycle forward
+        setFocusedField((prev) => (prev === 'typeSelector' ? 'commentInput' : 'typeSelector'));
+      }
       return;
+    }
+
+    // Number keys for type selection only when type selector is focused
+    if (focusedField === 'typeSelector') {
+      const typeIndex = parseInt(input, 10) - 1;
+      if (typeIndex >= 0 && typeIndex < COMMENT_TYPE_ORDER.length) {
+        setSelectedType(COMMENT_TYPE_ORDER[typeIndex]!);
+        return;
+      }
     }
 
     if (key.return && content.trim()) {
@@ -72,7 +86,9 @@ export function CommentForm({
       </Box>
 
       <Box marginBottom={1}>
-        <Text dimColor>Type: </Text>
+        <Text color={focusedField === 'typeSelector' ? 'cyan' : undefined} dimColor={focusedField !== 'typeSelector'}>
+          Type{focusedField === 'typeSelector' ? ' \u25B6' : ':'}{' '}
+        </Text>
         {COMMENT_TYPE_ORDER.map((type, i) => {
           const config = COMMENT_TYPE_CONFIG[type];
           const isSelected = type === selectedType;
@@ -91,19 +107,23 @@ export function CommentForm({
       </Box>
 
       <Box marginBottom={1}>
-        <Text>Comment: </Text>
+        <Text color={focusedField === 'commentInput' ? 'cyan' : undefined} dimColor={focusedField !== 'commentInput'}>
+          Comment{focusedField === 'commentInput' ? ' \u25B6' : ':'}{' '}
+        </Text>
         <TextInput
           value={content}
           onChange={setContent}
           onSubmit={handleSubmit}
           placeholder="Enter your comment..."
-          focus={true}
+          focus={focusedField === 'commentInput'}
           showCursor={true}
         />
       </Box>
 
       <Box>
         <Text dimColor>Press </Text>
+        <Text color="cyan">Tab</Text>
+        <Text dimColor> to switch fields, </Text>
         <Text color="cyan">Enter</Text>
         <Text dimColor> to submit, </Text>
         <Text color="yellow">Esc</Text>

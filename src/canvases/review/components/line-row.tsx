@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import type { DocumentLine, CommentType } from '../types';
 import { COMMENT_TYPE_CONFIG } from '../constants';
+import { tokenizeLine, renderHighlightedLine } from '../../../lib/syntax-highlight';
 
 interface LineRowProps {
   line: DocumentLine;
@@ -14,6 +15,26 @@ export function LineRow({ line, isSelected, commentType, lineNumberWidth }: Line
   const indicator = commentType ? COMMENT_TYPE_CONFIG[commentType].icon : ' ';
   const indicatorColor = commentType ? COMMENT_TYPE_CONFIG[commentType].color : undefined;
 
+  const renderContent = () => {
+    if (isSelected) {
+      return <Text inverse>{' '}{line.content}</Text>;
+    }
+    if (line.isCodeBlock && line.codeLanguage) {
+      const tokens = tokenizeLine(line.content, line.codeLanguage);
+      return (
+        <>
+          <Text>{' '}</Text>
+          {renderHighlightedLine(tokens)}
+        </>
+      );
+    }
+    return (
+      <Text color={line.isCodeBlock ? 'cyan' : undefined}>
+        {' '}{line.content}
+      </Text>
+    );
+  };
+
   return (
     <Box>
       <Text color={indicatorColor}>{indicator}</Text>
@@ -23,9 +44,7 @@ export function LineRow({ line, isSelected, commentType, lineNumberWidth }: Line
       <Text inverse={isSelected} color={isSelected ? undefined : (line.isCodeBlock ? 'gray' : undefined)}>
         {isSelected ? '\u25B6' : ' '}
       </Text>
-      <Text inverse={isSelected} color={line.isCodeBlock ? 'cyan' : undefined}>
-        {' '}{line.content}
-      </Text>
+      {renderContent()}
     </Box>
   );
 }
