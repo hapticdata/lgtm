@@ -68,6 +68,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [exportedPath, setExportedPath] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
 
   // Adjust scroll offset when selected line changes
@@ -114,7 +115,9 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
         setTimeout(() => setExportedPath(null), 3000);
       }
     } catch (err) {
-      // Export failed silently
+      const message = err instanceof Error ? err.message : 'Export failed';
+      setExportError(message);
+      setTimeout(() => setExportError(null), 5000);
     }
   }, [document, comments, filePath]);
 
@@ -334,6 +337,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
           unresolvedCount={getUnresolvedCount()}
           copied={copied}
           exported={exportedPath}
+          error={exportError}
         />
         <SummaryView documentName={document.name} comments={comments} />
       </Box>
@@ -350,6 +354,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
         unresolvedCount={getUnresolvedCount()}
         copied={copied}
         exported={exportedPath}
+        error={exportError}
       />
       <Box flexDirection="row" flexGrow={1}>
         <Box flexGrow={1}>

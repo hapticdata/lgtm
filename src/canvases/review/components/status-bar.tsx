@@ -9,6 +9,7 @@ interface StatusBarProps {
   unresolvedCount: number;
   copied?: boolean;
   exported?: string | null;
+  error?: string | null;
 }
 
 export function StatusBar({
@@ -18,6 +19,7 @@ export function StatusBar({
   unresolvedCount,
   copied,
   exported,
+  error,
 }: StatusBarProps) {
   const filterLabel = filter === 'all' ? 'All' : filter === 'unresolved' ? 'Unresolved' : filter;
 
@@ -44,6 +46,12 @@ export function StatusBar({
           <>
             <Text dimColor> | </Text>
             <Text color="green">Exported!</Text>
+          </>
+        )}
+        {error && (
+          <>
+            <Text dimColor> | </Text>
+            <Text color="red">{error}</Text>
           </>
         )}
       </Box>

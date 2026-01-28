@@ -1,19 +1,38 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+
+const COPY_NOTIFICATION_TIMEOUT = 2000;
 
 export function useClipboard() {
   const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const copyToClipboard = useCallback(async (text: string): Promise<boolean> => {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     const markCopied = () => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      timeoutRef.current = setTimeout(() => setCopied(false), COPY_NOTIFICATION_TIMEOUT);
     };
 
     // If running inside tmux, try tmux buffer first
     if (process.env.TMUX) {
       try {
-        const tmuxResult = await Bun.$`tmux set-buffer ${text}`.quiet();
-        if (tmuxResult.exitCode === 0) {
+        const proc = Bun.spawn(['tmux', 'set-buffer', '--', text], { stdout: 'ignore', stderr: 'ignore' });
+        const exitCode = await proc.exited;
+        if (exitCode === 0) {
           markCopied();
           return true;
         }
@@ -22,10 +41,15 @@ export function useClipboard() {
       }
     }
 
+    // Try xclip (Linux)
     try {
-      // Try xclip first (Linux)
-      const xclipResult = await Bun.$`echo ${text} | xclip -selection clipboard`.quiet();
-      if (xclipResult.exitCode === 0) {
+      const proc = Bun.spawn(['xclip', '-selection', 'clipboard'], {
+        stdin: new Response(text).body,
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
         markCopied();
         return true;
       }
@@ -33,10 +57,15 @@ export function useClipboard() {
       // xclip not available
     }
 
+    // Try xsel (Linux alternative)
     try {
-      // Try xsel (Linux alternative)
-      const xselResult = await Bun.$`echo ${text} | xsel --clipboard --input`.quiet();
-      if (xselResult.exitCode === 0) {
+      const proc = Bun.spawn(['xsel', '--clipboard', '--input'], {
+        stdin: new Response(text).body,
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
         markCopied();
         return true;
       }
@@ -44,10 +73,15 @@ export function useClipboard() {
       // xsel not available
     }
 
+    // Try pbcopy (macOS)
     try {
-      // Try pbcopy (macOS)
-      const pbcopyResult = await Bun.$`echo ${text} | pbcopy`.quiet();
-      if (pbcopyResult.exitCode === 0) {
+      const proc = Bun.spawn(['pbcopy'], {
+        stdin: new Response(text).body,
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
         markCopied();
         return true;
       }
@@ -55,10 +89,15 @@ export function useClipboard() {
       // pbcopy not available
     }
 
+    // Try wl-copy (Wayland)
     try {
-      // Try wl-copy (Wayland)
-      const wlResult = await Bun.$`echo ${text} | wl-copy`.quiet();
-      if (wlResult.exitCode === 0) {
+      const proc = Bun.spawn(['wl-copy'], {
+        stdin: new Response(text).body,
+        stdout: 'ignore',
+        stderr: 'ignore',
+      });
+      const exitCode = await proc.exited;
+      if (exitCode === 0) {
         markCopied();
         return true;
       }
@@ -66,17 +105,7 @@ export function useClipboard() {
       // wl-copy not available
     }
 
-    // Final fallback: try tmux even if TMUX env isn't set (nested sessions)
-    try {
-      const tmuxFallback = await Bun.$`tmux set-buffer ${text}`.quiet();
-      if (tmuxFallback.exitCode === 0) {
-        markCopied();
-        return true;
-      }
-    } catch {
-      // tmux not available
-    }
-
+    // No clipboard method worked
     return false;
   }, []);
 

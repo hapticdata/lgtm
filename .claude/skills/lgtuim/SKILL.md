@@ -1,15 +1,16 @@
 ---
 name: lgtuim
 description: Launch LGTuiM TUI to review a markdown file with line-by-line commenting
-argument-hint: <file-path> [--tmux]
+argument-hint: <file-path> [--stdin]
 allowed-tools: Bash(bun *), Bash(tmux *), Read
 ---
 
-Launch LGTuiM to review the specified markdown file.
+Launch LGTuiM to review the specified markdown file or piped content.
 
 ## Usage
 /lgtuim path/to/plan.md          # Opens TUI for review (auto-spawns in tmux pane)
 /lgtuim @CLAUDE.md               # @ prefix is stripped automatically
+/lgtuim --stdin                  # Review content piped from stdin
 
 ## What it does
 Opens an interactive TUI for reviewing markdown documents with:

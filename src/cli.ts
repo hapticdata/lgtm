@@ -2,6 +2,7 @@
 import { program } from "commander";
 import { detectTerminal, spawnCanvas } from "./terminal";
 import path from "path";
+import { getLastClaudeResponse, findMostRecentSession } from "./lib/session-reader";
 
 function setWindowTitle(title: string) {
   process.stdout.write(`\x1b]0;${title}\x07`);
@@ -24,16 +25,55 @@ program
   .option("--session <name>", "Named session for persistence")
   .option("--comments <file>", "Load comments from specific file")
   .option("--readonly", "View-only mode")
-  .option("--socket <path>", "Unix socket path for IPC")
   .option("--tmux", "Open in tmux split pane instead of current terminal")
   .option("--export-on-quit <path>", "Export comments to file when quitting")
+  .option("--stdin", "Read content from stdin instead of a file")
+  .option("--context", "Load Claude's last response from current session")
   .action(async (file, options) => {
-    if (!file) {
+    let filePath: string;
+
+    // Handle --stdin: read from stdin and write to temp file
+    if (options.stdin) {
+      const content = await Bun.stdin.text();
+      if (!content.trim()) {
+        console.error("Error: No content received from stdin");
+        process.exit(1);
+      }
+      const tempPath = `/tmp/lgtuim-stdin-${Date.now()}.md`;
+      await Bun.write(tempPath, content);
+      filePath = tempPath;
+    }
+    // Handle --context: load Claude's last response
+    else if (options.context) {
+      let sessionId = process.env.CLAUDE_SESSION_ID;
+      const projectPath = process.cwd();
+
+      // Fallback: find most recent session if env var not set
+      if (!sessionId) {
+        sessionId = await findMostRecentSession(projectPath) ?? undefined;
+      }
+
+      const content = await getLastClaudeResponse(sessionId, projectPath);
+      if (!content) {
+        console.error("Error: Could not find Claude context for current session");
+        console.error(`Session ID: ${sessionId || "not set"}`);
+        console.error(`Project path: ${projectPath}`);
+        process.exit(1);
+      }
+
+      const tempPath = `/tmp/lgtuim-context-${Date.now()}.md`;
+      await Bun.write(tempPath, `# Claude Response Review\n\n${content}`);
+      filePath = tempPath;
+    }
+    // Handle file argument
+    else if (file) {
+      filePath = path.resolve(file);
+    }
+    // No input provided
+    else {
       program.help();
       return;
     }
-
-    const filePath = path.resolve(file);
     // Use tmux if explicitly requested, or if export-on-quit is set (Claude Code use case)
     const useTmux = options.tmux || options.exportOnQuit || process.env.LGTUIM_TMUX === '1';
 
@@ -54,7 +94,6 @@ program
         session: options.session,
         commentsFile: options.comments,
         readonly: options.readonly,
-        socketPath: options.socket,
         exportOnQuit: options.exportOnQuit,
       });
     }
@@ -66,7 +105,6 @@ program
   .option("--session <name>", "Named session for persistence")
   .option("--comments <file>", "Load comments from specific file")
   .option("--readonly", "View-only mode")
-  .option("--socket <path>", "Unix socket path for IPC")
   .option("--auto-export <path>", "Export comments to file when quitting")
   .action(async (file, options) => {
     const filePath = path.resolve(file);
@@ -78,7 +116,6 @@ program
       session: options.session,
       commentsFile: options.comments,
       readonly: options.readonly,
-      socketPath: options.socket,
       exportOnQuit: options.autoExport,
     });
   });
