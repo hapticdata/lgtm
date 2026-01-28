@@ -76,4 +76,5 @@ export interface CanvasOptions {
   commentsFile?: string;
   readonly?: boolean;
   socketPath?: string;
+  exportOnQuit?: string;
 }

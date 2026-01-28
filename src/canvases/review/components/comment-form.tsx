@@ -60,9 +60,8 @@ export function CommentForm({
       }
     }
 
-    if (key.return && content.trim()) {
-      handleSubmit();
-    }
+    // Note: Don't handle Enter here - TextInput's onSubmit handles it
+    // Handling it here too would cause duplicate submissions
   });
 
   const truncatedLine = lineContent.length > 50

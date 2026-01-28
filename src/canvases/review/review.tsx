@@ -24,7 +24,9 @@ interface ReviewCanvasProps {
 export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows ?? 24;
-  const visibleHeight = terminalHeight - 6; // Account for status bar and borders
+  // Account for UI chrome and tmux overhead
+  const inTmux = !!process.env.TMUX;
+  const visibleHeight = terminalHeight - (inTmux ? 16 : 6);
 
   const { document, loading, error } = useDocument(filePath);
   const {
@@ -66,6 +68,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [exportedPath, setExportedPath] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
 
   // Adjust scroll offset when selected line changes
   useEffect(() => {
@@ -95,22 +98,39 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     }
   }, [document, comments, copyToClipboard]);
 
-  const handleExport = useCallback(async () => {
+  const handleExport = useCallback(async (exportPath?: string) => {
     if (!document) return;
 
     const text = formatFeedbackForExport(document.name, comments);
-    const dir = path.dirname(filePath);
-    const basename = path.basename(filePath, path.extname(filePath));
-    const exportPath = path.join(dir, `${basename}-feedback.md`);
+    const targetPath = exportPath ?? path.join(
+      path.dirname(filePath),
+      `${path.basename(filePath, path.extname(filePath))}-feedback.md`
+    );
 
     try {
-      await Bun.write(exportPath, text);
-      setExportedPath(exportPath);
-      setTimeout(() => setExportedPath(null), 3000);
+      await Bun.write(targetPath, text);
+      if (!exportPath) {
+        setExportedPath(targetPath);
+        setTimeout(() => setExportedPath(null), 3000);
+      }
     } catch (err) {
       // Export failed silently
     }
   }, [document, comments, filePath]);
+
+  // Handle exit with async export - triggered by isExiting state
+  useEffect(() => {
+    if (!isExiting) return;
+
+    const doExit = async () => {
+      if (options?.exportOnQuit) {
+        await handleExport(options.exportOnQuit);
+      }
+      onExit?.();
+    };
+
+    doExit();
+  }, [isExiting, options?.exportOnQuit, handleExport, onExit]);
 
   const cycleFilter = useCallback(() => {
     const currentIndex = FILTER_OPTIONS.findIndex((opt) => opt.value === filter);
@@ -146,7 +166,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     }
 
     if (input === 'q' || key.escape) {
-      onExit?.();
+      setIsExiting(true);
       return;
     }
 
@@ -161,7 +181,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     }
 
     if (input === 'E') {
-      handleExport();
+      handleExport(undefined);
       return;
     }
 

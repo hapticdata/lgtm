@@ -7,18 +7,26 @@ function setWindowTitle(title: string) {
   process.stdout.write(`\x1b]0;${title}\x07`);
 }
 
+function resetTerminal() {
+  // Send terminal reset sequence to clear screen and reset cursor to 0,0
+  // This ensures Ink starts rendering from a clean state
+  process.stdout.write('\x1bc');
+}
+
 program
   .name("lgtuim")
   .description("TUI application for reviewing markdown plans with line-by-line commenting")
   .version("0.1.0");
 
-// Default command: show the file in current terminal
+// Default command: show the file in current terminal (or tmux if LGTUIM_TMUX=1)
 program
   .argument("[file]", "Markdown file to review")
   .option("--session <name>", "Named session for persistence")
   .option("--comments <file>", "Load comments from specific file")
   .option("--readonly", "View-only mode")
   .option("--socket <path>", "Unix socket path for IPC")
+  .option("--tmux", "Open in tmux split pane instead of current terminal")
+  .option("--export-on-quit <path>", "Export comments to file when quitting")
   .action(async (file, options) => {
     if (!file) {
       program.help();
@@ -26,15 +34,30 @@ program
     }
 
     const filePath = path.resolve(file);
-    setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
+    // Use tmux if explicitly requested, or if export-on-quit is set (Claude Code use case)
+    const useTmux = options.tmux || options.exportOnQuit || process.env.LGTUIM_TMUX === '1';
 
-    const { renderCanvas } = await import("./canvases");
-    await renderCanvas("review", filePath, {
-      session: options.session,
-      commentsFile: options.comments,
-      readonly: options.readonly,
-      socketPath: options.socket,
-    });
+    if (useTmux) {
+      const result = await spawnCanvas(filePath, {
+        session: options.session,
+        commentsFile: options.comments,
+        readonly: options.readonly,
+        exportOnQuit: options.exportOnQuit,
+        wait: !!options.exportOnQuit, // Wait if export-on-quit is set
+      });
+      console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
+    } else {
+      resetTerminal();
+      setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
+      const { renderCanvas } = await import("./canvases");
+      await renderCanvas("review", filePath, {
+        session: options.session,
+        commentsFile: options.comments,
+        readonly: options.readonly,
+        socketPath: options.socket,
+        exportOnQuit: options.exportOnQuit,
+      });
+    }
   });
 
 program
@@ -44,8 +67,10 @@ program
   .option("--comments <file>", "Load comments from specific file")
   .option("--readonly", "View-only mode")
   .option("--socket <path>", "Unix socket path for IPC")
+  .option("--auto-export <path>", "Export comments to file when quitting")
   .action(async (file, options) => {
     const filePath = path.resolve(file);
+    resetTerminal();
     setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
 
     const { renderCanvas } = await import("./canvases");
@@ -54,6 +79,7 @@ program
       commentsFile: options.comments,
       readonly: options.readonly,
       socketPath: options.socket,
+      exportOnQuit: options.autoExport,
     });
   });
 
