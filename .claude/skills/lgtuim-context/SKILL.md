@@ -1,7 +1,7 @@
 ---
 name: lgtuim-context
 description: Review Claude's last response in LGTuiM for line-by-line feedback
-allowed-tools: Bash(bun *), Bash(tmux *), Read
+allowed-tools: Bash(lgtuim *), Bash(tmux *), Read
 ---
 
 Open Claude's last response in LGTuiM so the user can review it with line-by-line commenting.
@@ -13,7 +13,7 @@ When the user wants to review your previous response and provide detailed feedba
 
 1. Run LGTuiM with the --context flag and export-on-quit:
    ```bash
-   bun run /home/dev/workspace/LGTuiM/src/cli.ts --context --export-on-quit /tmp/lgtuim-context-feedback.md
+   lgtuim --context --export-on-quit /tmp/lgtuim-context-feedback.md
    ```
 
 2. After the TUI exits, read the exported feedback file:

@@ -26,11 +26,20 @@ export interface SpawnOptions {
   wait?: boolean;
 }
 
-const CANVAS_PANE_FILE = "/tmp/lgtuim-pane-id";
+function getCanvasPaneFilePath(): string {
+  // Use tmux session and window to create a unique pane file per context
+  // This prevents conflicts when running multiple lgtuim instances in different windows
+  const sessionResult = spawnSync("tmux", ["display-message", "-p", "#{session_id}"]);
+  const windowResult = spawnSync("tmux", ["display-message", "-p", "#{window_id}"]);
+  const sessionId = sessionResult.stdout?.toString().trim() || "default";
+  const windowId = windowResult.stdout?.toString().trim() || "0";
+  return `/tmp/lgtuim-pane-${sessionId}-${windowId}`;
+}
 
 async function getCanvasPaneId(): Promise<string | null> {
   try {
-    const file = Bun.file(CANVAS_PANE_FILE);
+    const paneFile = getCanvasPaneFilePath();
+    const file = Bun.file(paneFile);
     if (await file.exists()) {
       const paneId = (await file.text()).trim();
       const result = spawnSync("tmux", ["display-message", "-t", paneId, "-p", "#{pane_id}"]);
@@ -38,7 +47,7 @@ async function getCanvasPaneId(): Promise<string | null> {
       if (result.status === 0 && output === paneId) {
         return paneId;
       }
-      await Bun.write(CANVAS_PANE_FILE, "");
+      await Bun.write(paneFile, "");
     }
   } catch {
     // Ignore errors
@@ -47,7 +56,7 @@ async function getCanvasPaneId(): Promise<string | null> {
 }
 
 async function saveCanvasPaneId(paneId: string): Promise<void> {
-  await Bun.write(CANVAS_PANE_FILE, paneId);
+  await Bun.write(getCanvasPaneFilePath(), paneId);
 }
 
 function getTargetPaneWidth(): number {
@@ -139,7 +148,7 @@ async function spawnTmux(command: string): Promise<CreatePaneResult> {
     if (result.success) {
       return result;
     }
-    await Bun.write(CANVAS_PANE_FILE, "");
+    await Bun.write(getCanvasPaneFilePath(), "");
   }
 
   return createNewPane(command);
@@ -198,7 +207,7 @@ export async function spawnCanvas(
     command += ` --readonly`;
   }
   if (options?.exportOnQuit) {
-    command += ` --auto-export "${options.exportOnQuit}"`;
+    command += ` --export-on-quit "${options.exportOnQuit}"`;
   }
 
   // If wait is requested, wrap command to write sentinel file when done

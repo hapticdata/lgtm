@@ -1,7 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import path from 'path';
 import crypto from 'crypto';
 import type { Comment, CommentType, CommentFilter, Document } from '../types';
+import { createDebouncedExporter, safeWrite } from '../../../lib/export-utils';
+import { formatFeedbackForExport } from '../../../lib/export-formatter';
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -48,10 +50,13 @@ async function saveToFile(storagePath: string, comments: Comment[]): Promise<voi
   await Bun.write(storagePath, JSON.stringify(data, null, 2));
 }
 
-export function useComments(document: Document | null, session?: string, commentsFile?: string) {
+export function useComments(document: Document | null, session?: string, commentsFile?: string, exportOnQuit?: string) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [filter, setFilter] = useState<CommentFilter>('all');
   const [storagePath, setStoragePath] = useState<string | null>(null);
+
+  // Debounced exporter for incremental markdown export
+  const exporterRef = useRef(createDebouncedExporter(750));
 
   // Determine storage path
   useEffect(() => {
@@ -75,6 +80,41 @@ export function useComments(document: Document | null, session?: string, comment
       saveToFile(storagePath, comments);
     }
   }, [storagePath, comments]);
+
+  // Immediate initial export when document loads (ensures file exists right away)
+  useEffect(() => {
+    if (!exportOnQuit || !document) return;
+
+    // Write immediately on first load - don't wait for comments
+    const text = formatFeedbackForExport(document.name, comments);
+    safeWrite(exportOnQuit, text);
+    // Note: NOT including comments in deps - only runs on document load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportOnQuit, document]);
+
+  // Incremental export to exportOnQuit path (debounced)
+  useEffect(() => {
+    if (!exportOnQuit || !document) return;
+
+    // Schedule debounced write whenever comments change
+    exporterRef.current.schedule(async () => {
+      const text = formatFeedbackForExport(document.name, comments);
+      await safeWrite(exportOnQuit, text);
+    });
+  }, [exportOnQuit, document, comments]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    const exporter = exporterRef.current;
+    return () => {
+      exporter.cancel();
+    };
+  }, []);
+
+  // Flush pending exports
+  const flushExport = useCallback(async () => {
+    await exporterRef.current.flush();
+  }, []);
 
   const addComment = useCallback(
     (lineNumber: number, content: string, type: CommentType) => {
@@ -179,5 +219,6 @@ export function useComments(document: Document | null, session?: string, comment
     getUnresolvedCount,
     getCommentTypeForLine,
     saveComments,
+    flushExport,
   };
 }

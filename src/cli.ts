@@ -2,7 +2,9 @@
 import { program } from "commander";
 import { detectTerminal, spawnCanvas } from "./terminal";
 import path from "path";
+import { unlink } from "node:fs/promises";
 import { getLastClaudeResponse, findMostRecentSession } from "./lib/session-reader";
+import { validateExportPath } from "./lib/export-utils";
 
 function setWindowTitle(title: string) {
   process.stdout.write(`\x1b]0;${title}\x07`);
@@ -12,6 +14,24 @@ function resetTerminal() {
   // Send terminal reset sequence to clear screen and reset cursor to 0,0
   // This ensures Ink starts rendering from a clean state
   process.stdout.write('\x1bc');
+}
+
+async function validateFileExists(filePath: string): Promise<void> {
+  const file = Bun.file(filePath);
+  if (!(await file.exists())) {
+    console.error(`Error: File not found: ${filePath}`);
+    process.exit(1);
+  }
+}
+
+async function cleanupTempFile(filePath: string | null): Promise<void> {
+  if (filePath && filePath.startsWith('/tmp/lgtuim-')) {
+    try {
+      await unlink(filePath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 }
 
 program
@@ -31,6 +51,7 @@ program
   .option("--context", "Load Claude's last response from current session")
   .action(async (file, options) => {
     let filePath: string;
+    let tempFilePath: string | null = null;
 
     // Handle --stdin: read from stdin and write to temp file
     if (options.stdin) {
@@ -42,6 +63,7 @@ program
       const tempPath = `/tmp/lgtuim-stdin-${Date.now()}.md`;
       await Bun.write(tempPath, content);
       filePath = tempPath;
+      tempFilePath = tempPath;
     }
     // Handle --context: load Claude's last response
     else if (options.context) {
@@ -64,38 +86,52 @@ program
       const tempPath = `/tmp/lgtuim-context-${Date.now()}.md`;
       await Bun.write(tempPath, `# Claude Response Review\n\n${content}`);
       filePath = tempPath;
+      tempFilePath = tempPath;
     }
     // Handle file argument
     else if (file) {
       filePath = path.resolve(file);
+      await validateFileExists(filePath);
     }
     // No input provided
     else {
       program.help();
       return;
     }
+    // Validate export path early if specified
+    if (options.exportOnQuit) {
+      const validation = await validateExportPath(options.exportOnQuit);
+      if (!validation.valid) {
+        console.warn(`Warning: Export path may not be writable: ${validation.error}`);
+      }
+    }
+
     // Use tmux if explicitly requested, or if export-on-quit is set (Claude Code use case)
     const useTmux = options.tmux || options.exportOnQuit || process.env.LGTUIM_TMUX === '1';
 
-    if (useTmux) {
-      const result = await spawnCanvas(filePath, {
-        session: options.session,
-        commentsFile: options.comments,
-        readonly: options.readonly,
-        exportOnQuit: options.exportOnQuit,
-        wait: !!options.exportOnQuit, // Wait if export-on-quit is set
-      });
-      console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
-    } else {
-      resetTerminal();
-      setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
-      const { renderCanvas } = await import("./canvases");
-      await renderCanvas("review", filePath, {
-        session: options.session,
-        commentsFile: options.comments,
-        readonly: options.readonly,
-        exportOnQuit: options.exportOnQuit,
-      });
+    try {
+      if (useTmux) {
+        const result = await spawnCanvas(filePath, {
+          session: options.session,
+          commentsFile: options.comments,
+          readonly: options.readonly,
+          exportOnQuit: options.exportOnQuit,
+          wait: !!options.exportOnQuit, // Wait if export-on-quit is set
+        });
+        console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
+      } else {
+        resetTerminal();
+        setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
+        const { renderCanvas } = await import("./canvases");
+        await renderCanvas("review", filePath, {
+          session: options.session,
+          commentsFile: options.comments,
+          readonly: options.readonly,
+          exportOnQuit: options.exportOnQuit,
+        });
+      }
+    } finally {
+      await cleanupTempFile(tempFilePath);
     }
   });
 
@@ -105,9 +141,14 @@ program
   .option("--session <name>", "Named session for persistence")
   .option("--comments <file>", "Load comments from specific file")
   .option("--readonly", "View-only mode")
-  .option("--auto-export <path>", "Export comments to file when quitting")
-  .action(async (file, options) => {
+  .option("--export-on-quit <path>", "Export comments to file when quitting")
+  .action(async (file, _options, command) => {
+    // Use optsWithGlobals() to merge parent + subcommand options.
+    // Commander.js v14 routes shared option names to the parent program,
+    // so the subcommand's local options may be empty.
+    const options = command.optsWithGlobals();
     const filePath = path.resolve(file);
+    await validateFileExists(filePath);
     resetTerminal();
     setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
 
@@ -116,7 +157,7 @@ program
       session: options.session,
       commentsFile: options.comments,
       readonly: options.readonly,
-      exportOnQuit: options.autoExport,
+      exportOnQuit: options.exportOnQuit,
     });
   });
 
@@ -128,6 +169,7 @@ program
   .option("--readonly", "View-only mode")
   .action(async (file, options) => {
     const filePath = path.resolve(file);
+    await validateFileExists(filePath);
     const result = await spawnCanvas(filePath, options);
     console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
   });
@@ -140,6 +182,7 @@ program
   .option("--format <type>", "Output format: markdown (default) or json", "markdown")
   .action(async (file, options) => {
     const filePath = path.resolve(file);
+    await validateFileExists(filePath);
     const { exportComments } = await import("./lib/export-formatter");
     const output = await exportComments(filePath, {
       session: options.session,

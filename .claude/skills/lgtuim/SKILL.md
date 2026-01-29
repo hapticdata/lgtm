@@ -2,7 +2,7 @@
 name: lgtuim
 description: Launch LGTuiM TUI to review a markdown file with line-by-line commenting
 argument-hint: <file-path> [--stdin]
-allowed-tools: Bash(bun *), Bash(tmux *), Read
+allowed-tools: Bash(lgtuim *), Bash(tmux *), Read
 ---
 
 Launch LGTuiM to review the specified markdown file or piped content.
@@ -26,9 +26,17 @@ When this skill is invoked, follow these steps:
 
 1. **Parse arguments**: Extract the file path from `$ARGUMENTS`. If it starts with `@`, strip that prefix. Ignore `--tmux` if present (it's automatic).
 2. **Resolve path**: Convert the file path to an absolute path if it isn't already.
-3. **Create export path**: Generate `/tmp/lgtuim-export-{basename-without-extension}.md`
-4. **Run the TUI**: Execute the command below. The `--export-on-quit` flag automatically enables tmux mode and waits for the user to quit.
+3. **Read the file**: Use the Read tool to load the full file content into context. This is essential so you can correlate the user's line-level comments with actual file content.
+4. **Create export path**: Generate `/tmp/lgtuim-export-{basename-without-extension}.md`
+5. **Run the TUI**: Execute the command below. The `--export-on-quit` flag automatically enables tmux mode and waits for the user to quit.
    ```bash
-   bun run /home/dev/workspace/LGTuiM/src/cli.ts "<resolved-file-path>" --export-on-quit "<export-path>"
+   lgtuim "<resolved-file-path>" --export-on-quit "<export-path>"
    ```
-5. **Return feedback**: After the command returns (user has quit the TUI), use the Read tool to read the export file and present its contents to the user.
+6. **Read the export**: After the command returns (user has quit the TUI), use the Read tool to read the export file.
+7. **Respond in review mode**: This is a collaborative review workflow. After reading the export:
+   - Correlate each comment with the corresponding line(s) from the original file content you read in step 3.
+   - Summarize the user's feedback, grouping by comment type (Blockers, Concerns, Questions, Suggestions, Praise).
+   - Proactively address blockers and concerns first — propose concrete code or content changes to resolve them.
+   - Answer any questions the user raised.
+   - Acknowledge suggestions and praise.
+   - Offer to iterate on the file by applying the proposed changes.

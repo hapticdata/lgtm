@@ -41,7 +41,8 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     getCommentTypeForLine,
     getUnresolvedCount,
     saveComments,
-  } = useComments(document, options?.session, options?.commentsFile);
+    flushExport,
+  } = useComments(document, options?.session, options?.commentsFile, options?.exportOnQuit);
 
   const {
     selectedLine,
@@ -126,6 +127,9 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     if (!isExiting) return;
 
     const doExit = async () => {
+      // Flush any pending debounced writes first
+      await flushExport();
+      // Final write for safety (in case no debounced write was pending)
       if (options?.exportOnQuit) {
         await handleExport(options.exportOnQuit);
       }
@@ -133,7 +137,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     };
 
     doExit();
-  }, [isExiting, options?.exportOnQuit, handleExport, onExit]);
+  }, [isExiting, options?.exportOnQuit, handleExport, onExit, flushExport]);
 
   const cycleFilter = useCallback(() => {
     const currentIndex = FILTER_OPTIONS.findIndex((opt) => opt.value === filter);
