@@ -26,7 +26,7 @@ export function StatusBar({
   return (
     <Box borderStyle="single" borderColor="gray" paddingX={1}>
       <Box flexGrow={1}>
-        <Text bold>LGTuiM: </Text>
+        <Text bold>lgtm: </Text>
         <Text>{fileName}</Text>
       </Box>
       <Box>

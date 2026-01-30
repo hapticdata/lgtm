@@ -1,23 +1,19 @@
 {
-  "name": "lgtuim",
-  "displayName": "LGTuiM",
-  "description": "TUI application for reviewing markdown plans with line-by-line commenting",
-  "version": "0.1.0",
-  "author": "LGTuiM",
-  "repository": "",
-  "skills": [
-    {
-      "name": "lgtuim",
-      "description": "Review markdown plans with line-by-line commenting",
-      "path": "skills/lgtuim/SKILL.md",
-      "triggers": ["/lgtuim"]
-    }
-  ],
-  "commands": [],
-  "dependencies": {
-    "commander": "^14.0.2",
-    "ink": "^6.6.0",
-    "react": "^19.2.3"
+  "name": "lgtm-marketplace",
+  "owner": {
+    "name": "Kyle Phillips",
+    "email": "kyle@haptic-data.com"
   },
-  "runtime": "bun"
+  "metadata": {
+    "description": "LGTuiM skills for Claude Code",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "lgtm",
+      "description": "TUI for reviewing documents with line-by-line commenting",
+      "source": "./",
+      "strict": false
+    }
+  ]
 }

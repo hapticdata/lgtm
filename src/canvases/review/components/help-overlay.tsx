@@ -14,7 +14,7 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
       padding={2}
     >
       <Box marginBottom={1}>
-        <Text bold color="yellow">LGTuiM Keyboard Shortcuts</Text>
+        <Text bold color="yellow">lgtm Keyboard Shortcuts</Text>
       </Box>
 
       <Box flexDirection="row" marginBottom={1}>

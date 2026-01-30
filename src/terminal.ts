@@ -28,12 +28,12 @@ export interface SpawnOptions {
 
 function getCanvasPaneFilePath(): string {
   // Use tmux session and window to create a unique pane file per context
-  // This prevents conflicts when running multiple lgtuim instances in different windows
+  // This prevents conflicts when running multiple lgtm instances in different windows
   const sessionResult = spawnSync("tmux", ["display-message", "-p", "#{session_id}"]);
   const windowResult = spawnSync("tmux", ["display-message", "-p", "#{window_id}"]);
   const sessionId = sessionResult.stdout?.toString().trim() || "default";
   const windowId = windowResult.stdout?.toString().trim() || "0";
-  return `/tmp/lgtuim-pane-${sessionId}-${windowId}`;
+  return `/tmp/lgtm-pane-${sessionId}-${windowId}`;
 }
 
 async function getCanvasPaneId(): Promise<string | null> {
@@ -155,7 +155,7 @@ async function spawnTmux(command: string): Promise<CreatePaneResult> {
 }
 
 function generateSentinelPath(): string {
-  return `/tmp/lgtuim-done-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `/tmp/lgtm-done-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function sleep(ms: number): Promise<void> {

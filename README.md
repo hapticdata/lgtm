@@ -1,4 +1,4 @@
-# LGTuiM
+# lgtm
 
 A terminal UI for reviewing documents with line-by-line commenting. Perfect for reviewing AI-generated plans, code proposals, or any text document that needs structured feedback.
 
@@ -14,8 +14,21 @@ A terminal UI for reviewing documents with line-by-line commenting. Perfect for 
 ## Installation
 
 ```bash
-bun add -g lgtuim
+bun install
+bun link
 ```
+as a Claude Skill:
+
+```
+claude --plugin-dir /path/to/lgtm
+```
+
+### Claude Skills
+
+- `/lgtm <file>` spawn a tmux pane to review a file, the file will be read by claude first, then when you hit `q` to finish your review claude will receive your feedback.
+
+- `/lgtm-plan` when in planning mode with claude this will open the current plan in a tmux pane
+- `/lgtm-context` load the last message claude sent you in a tmux pane
 
 Requires [Bun](https://bun.sh) v1.0.0 or later.
 
@@ -26,26 +39,26 @@ Requires [Bun](https://bun.sh) v1.0.0 or later.
 Review a file in your terminal:
 
 ```bash
-lgtuim document.md
+lgtm document.md
 ```
 
 ### Commands
 
 ```bash
 # Review in current terminal (default)
-lgtuim <file>
+lgtm <file>
 
 # Explicitly show in current terminal
-lgtuim show <file>
+lgtm show <file>
 
 # Open in tmux split pane
-lgtuim spawn <file>
+lgtm spawn <file>
 
 # Export comments to stdout
-lgtuim export <file>
+lgtm export <file>
 
 # Show terminal environment info
-lgtuim env
+lgtm env
 ```
 
 ### Options
@@ -64,13 +77,13 @@ lgtuim env
 
 ```bash
 # Export as markdown (default)
-lgtuim export document.md
+lgtm export document.md
 
 # Export as JSON
-lgtuim export document.md --format json
+lgtm export document.md --format json
 
 # Export specific session
-lgtuim export document.md --session my-review
+lgtm export document.md --session my-review
 ```
 
 ## Keybindings
@@ -124,7 +137,7 @@ lgtuim export document.md --session my-review
 
 | Variable | Purpose |
 |----------|---------|
-| `LGTUIM_TMUX=1` | Default to tmux mode (skip `--tmux` flag) |
+| `LGTM_TMUX=1` | Default to tmux mode (skip `--tmux` flag) |
 | `TMUX_PANE` | Target pane for tmux splits |
 
 ### Comment Storage
@@ -133,27 +146,27 @@ Comments are stored in JSON files alongside the reviewed document:
 
 ```
 document.md           # Original file
-.lgtuim-document.json # Comments file
+.lgtm-document.json # Comments file
 ```
 
 With sessions:
 ```
-.lgtuim-document-mysession.json
+.lgtm-document-mysession.json
 ```
 
 ## Claude Code Integration
 
-LGTuiM integrates with Claude Code for AI-assisted review workflows. When used with `--export-on-quit`, comments are automatically exported when you quit.
+lgtm integrates with Claude Code for AI-assisted review workflows. When used with `--export-on-quit`, comments are automatically exported when you quit.
 
 ```bash
-# Claude Code can spawn lgtuim and wait for your review
-lgtuim document.md --export-on-quit /tmp/feedback.md
+# Claude Code can spawn lgtm and wait for your review
+lgtm document.md --export-on-quit /tmp/feedback.md
 ```
 
 The `--context` flag loads Claude's last response for review:
 
 ```bash
-lgtuim --context
+lgtm --context
 ```
 
 ## License

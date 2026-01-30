@@ -1,22 +1,24 @@
 {
-  "name": "lgtuim",
+  "name": "lgtm",
   "version": "0.1.0",
   "description": "TUI for reviewing documents with line-by-line commenting",
   "keywords": ["cli", "tui", "review", "comments", "markdown", "terminal", "claude-code", "code-review", "feedback"],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hapticdata/lgtuim.git"
+    "url": "git+https://github.com/hapticdata/lgtm.git"
   },
-  "homepage": "https://github.com/hapticdata/lgtuim",
-  "bugs": "https://github.com/hapticdata/lgtuim/issues",
+  "homepage": "https://github.com/hapticdata/lgtm",
+  "bugs": "https://github.com/hapticdata/lgtm/issues",
   "license": "MIT",
   "author": "Kyle Phillips <kyle@haptic-data.com>",
   "type": "module",
   "bin": {
-    "lgtuim": "src/cli.ts"
+    "lgtm": "src/cli.ts"
   },
   "files": [
     "src/",
+    "skills/",
+    ".claude-plugin/",
     "README.md",
     "LICENSE"
   ],

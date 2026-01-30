@@ -52,7 +52,7 @@ export async function safeWrite(filePath: string, content: string): Promise<bool
     return true;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[lgtuim] Export write failed: ${filePath}: ${message}`);
+    console.error(`[lgtm] Export write failed: ${filePath}: ${message}`);
     return false;
   }
 }

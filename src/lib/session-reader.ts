@@ -23,7 +23,7 @@ interface SessionMessage {
 
 /**
  * Convert a project path to the slug format used by Claude Code
- * e.g., /home/dev/workspace/LGTuiM -> -home-dev-workspace-LGTuiM
+ * e.g., /home/dev/workspace/myproject -> -home-dev-workspace-myproject
  */
 function projectPathToSlug(projectPath: string): string {
   return projectPath.replace(/\//g, "-");

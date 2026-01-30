@@ -25,7 +25,7 @@ async function validateFileExists(filePath: string): Promise<void> {
 }
 
 async function cleanupTempFile(filePath: string | null): Promise<void> {
-  if (filePath && filePath.startsWith('/tmp/lgtuim-')) {
+  if (filePath && filePath.startsWith('/tmp/lgtm-')) {
     try {
       await unlink(filePath);
     } catch {
@@ -35,11 +35,11 @@ async function cleanupTempFile(filePath: string | null): Promise<void> {
 }
 
 program
-  .name("lgtuim")
+  .name("lgtm")
   .description("TUI application for reviewing markdown plans with line-by-line commenting")
   .version("0.1.0");
 
-// Default command: show the file in current terminal (or tmux if LGTUIM_TMUX=1)
+// Default command: show the file in current terminal (or tmux if LGTM_TMUX=1)
 program
   .argument("[file]", "Markdown file to review")
   .option("--session <name>", "Named session for persistence")
@@ -60,7 +60,7 @@ program
         console.error("Error: No content received from stdin");
         process.exit(1);
       }
-      const tempPath = `/tmp/lgtuim-stdin-${Date.now()}.md`;
+      const tempPath = `/tmp/lgtm-stdin-${Date.now()}.md`;
       await Bun.write(tempPath, content);
       filePath = tempPath;
       tempFilePath = tempPath;
@@ -83,7 +83,7 @@ program
         process.exit(1);
       }
 
-      const tempPath = `/tmp/lgtuim-context-${Date.now()}.md`;
+      const tempPath = `/tmp/lgtm-context-${Date.now()}.md`;
       await Bun.write(tempPath, `# Claude Response Review\n\n${content}`);
       filePath = tempPath;
       tempFilePath = tempPath;
@@ -107,7 +107,7 @@ program
     }
 
     // Use tmux if explicitly requested, or if export-on-quit is set (Claude Code use case)
-    const useTmux = options.tmux || options.exportOnQuit || process.env.LGTUIM_TMUX === '1';
+    const useTmux = options.tmux || options.exportOnQuit || process.env.LGTM_TMUX === '1';
 
     try {
       if (useTmux) {
@@ -118,10 +118,10 @@ program
           exportOnQuit: options.exportOnQuit,
           wait: !!options.exportOnQuit, // Wait if export-on-quit is set
         });
-        console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
+        console.log(`Spawned lgtm for '${path.basename(filePath)}' via ${result.method}`);
       } else {
         resetTerminal();
-        setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
+        setWindowTitle(`lgtm: ${path.basename(filePath)}`);
         const { renderCanvas } = await import("./canvases");
         await renderCanvas("review", filePath, {
           session: options.session,
@@ -150,7 +150,7 @@ program
     const filePath = path.resolve(file);
     await validateFileExists(filePath);
     resetTerminal();
-    setWindowTitle(`lgtuim: ${path.basename(filePath)}`);
+    setWindowTitle(`lgtm: ${path.basename(filePath)}`);
 
     const { renderCanvas } = await import("./canvases");
     await renderCanvas("review", filePath, {
@@ -171,7 +171,7 @@ program
     const filePath = path.resolve(file);
     await validateFileExists(filePath);
     const result = await spawnCanvas(filePath, options);
-    console.log(`Spawned lgtuim for '${path.basename(filePath)}' via ${result.method}`);
+    console.log(`Spawned lgtm for '${path.basename(filePath)}' via ${result.method}`);
   });
 
 program
