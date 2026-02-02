@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { Comment } from '../types';
 import { CommentCard } from './comment-card';
@@ -10,15 +10,14 @@ interface CommentPanelProps {
   isFocused: boolean;
 }
 
-export function CommentPanel({
+export const CommentPanel = memo(function CommentPanel({
   comments,
   selectedIndex,
   visibleHeight,
   isFocused,
 }: CommentPanelProps) {
-  // Calculate visible window centered on selected comment
   const totalComments = comments.length;
-  const maxVisible = Math.floor(visibleHeight / 5); // Approximate cards per screen
+  const maxVisible = visibleHeight - 4; // 1 row per comment, minus header/footer
 
   let startIndex = 0;
   if (totalComments > maxVisible) {
@@ -34,6 +33,8 @@ export function CommentPanel({
       borderStyle="single"
       borderColor={isFocused ? 'cyan' : 'gray'}
       width={40}
+      minWidth={40}
+      flexShrink={0}
     >
       <Box paddingX={1} borderBottom>
         <Text bold color={isFocused ? 'cyan' : undefined}>
@@ -41,7 +42,7 @@ export function CommentPanel({
         </Text>
         <Text dimColor> ({comments.length})</Text>
       </Box>
-      <Box flexDirection="column" paddingX={1} paddingY={1} flexGrow={1}>
+      <Box flexDirection="column" paddingX={1} flexGrow={1}>
         {comments.length === 0 ? (
           <Text dimColor italic>
             No comments yet.{'\n'}
@@ -66,4 +67,4 @@ export function CommentPanel({
       )}
     </Box>
   );
-}
+});

@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "child_process";
 import path from "path";
+import { TMUX_PANE_SPLIT_RATIO } from "./lib/constants";
 
 export interface TerminalEnvironment {
   inTmux: boolean;
@@ -77,13 +78,19 @@ interface CreatePaneResult {
   paneId?: string;
 }
 
+function wrapCommandWithErrorHandling(command: string): string {
+  return `_ec=0; ${command} || _ec=$?; if [ $_ec -ne 0 ]; then echo ""; echo "Command failed with exit code $_ec"; echo "Press Enter to close..."; read; fi`;
+}
+
 async function createNewPane(command: string): Promise<CreatePaneResult> {
   return new Promise((resolve) => {
     // Use absolute width instead of percentage to avoid "size missing" error
     // when running from non-TTY context (like Claude Code)
     const paneWidth = getTargetPaneWidth();
-    const newPaneWidth = Math.floor(paneWidth * 0.67); // 67% of current width
+    const newPaneWidth = Math.floor(paneWidth * TMUX_PANE_SPLIT_RATIO);
     const targetPane = process.env.TMUX_PANE;
+
+    const wrappedCommand = wrapCommandWithErrorHandling(command);
 
     const args = [
       "split-window",
@@ -92,7 +99,7 @@ async function createNewPane(command: string): Promise<CreatePaneResult> {
       "-l", String(newPaneWidth),
       "-P",
       "-F", "#{pane_id}",
-      command
+      wrappedCommand
     ];
     const proc = spawn("tmux", args);
     let paneId = "";
@@ -122,6 +129,14 @@ async function createNewPane(command: string): Promise<CreatePaneResult> {
 
 async function reuseExistingPane(paneId: string, command: string): Promise<CreatePaneResult> {
   return new Promise((resolve) => {
+    // Verify the pane actually exists and is responsive
+    const checkResult = spawnSync("tmux", ["list-panes", "-F", "#{pane_id}"]);
+    const existingPanes = checkResult.stdout?.toString().split('\n').map(p => p.trim()) || [];
+    if (!existingPanes.includes(paneId)) {
+      resolve({ success: false });
+      return;
+    }
+
     // First, kill any running process
     const killProc = spawn("tmux", ["send-keys", "-t", paneId, "C-c"]);
     killProc.on("close", () => {
@@ -130,7 +145,8 @@ async function reuseExistingPane(paneId: string, command: string): Promise<Creat
 
       setTimeout(() => {
         // Use reset command which properly resets terminal state including cursor position
-        const args = ["send-keys", "-t", paneId, `reset && ${command}`, "Enter"];
+        const wrappedCommand = wrapCommandWithErrorHandling(command);
+        const args = ["send-keys", "-t", paneId, `reset && ${wrappedCommand}`, "Enter"];
         const proc = spawn("tmux", args);
         proc.on("close", (code) => resolve({ success: code === 0, paneId: code === 0 ? paneId : undefined }));
         proc.on("error", () => resolve({ success: false }));
@@ -193,10 +209,20 @@ export async function spawnCanvas(
     throw new Error("Spawning requires tmux. Please run inside a tmux session.");
   }
 
-  const scriptDir = import.meta.dir.replace("/src", "");
-  const cliPath = `${scriptDir}/src/cli.ts`;
-
-  let command = `bun ${cliPath} show "${filePath}"`;
+  // Determine how to invoke the CLI - compiled binary vs source
+  // For compiled binaries, process.execPath is the binary itself
+  // For source, we need to run via bun
+  const isCompiled = !import.meta.dir.includes('/src');
+  let command: string;
+  if (isCompiled) {
+    // Running as compiled binary - invoke self directly
+    command = `"${process.execPath}" show "${filePath}"`;
+  } else {
+    // Running from source - use bun to run the CLI
+    const scriptDir = import.meta.dir.replace("/src", "");
+    const cliPath = `${scriptDir}/src/cli.ts`;
+    command = `bun "${cliPath}" show "${filePath}"`;
+  }
   if (options?.session) {
     command += ` --session "${options.session}"`;
   }
@@ -211,10 +237,11 @@ export async function spawnCanvas(
   }
 
   // If wait is requested, wrap command to write sentinel file when done
+  // Capture exit code, touch sentinel, then exit with original code (preserves error for wrapper)
   let sentinelPath: string | undefined;
   if (options?.wait) {
     sentinelPath = generateSentinelPath();
-    command = `${command}; touch ${sentinelPath}`;
+    command = `${command}; _lgtm_ec=$?; touch ${sentinelPath}; exit $_lgtm_ec`;
   }
 
   const result = await spawnTmux(command);

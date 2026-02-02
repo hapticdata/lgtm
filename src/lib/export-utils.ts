@@ -1,5 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'path';
+import { getErrorMessage } from './errors';
+import { DEBOUNCE_DELAY_MS } from './constants';
 
 export interface ValidationResult {
   valid: boolean;
@@ -25,7 +27,7 @@ export async function validateExportPath(exportPath: string): Promise<Validation
     } catch (err) {
       return {
         valid: false,
-        error: `Cannot write to directory: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        error: `Cannot write to directory: ${getErrorMessage(err)}`,
       };
     }
 
@@ -33,7 +35,7 @@ export async function validateExportPath(exportPath: string): Promise<Validation
   } catch (err) {
     return {
       valid: false,
-      error: `Cannot create directory: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      error: `Cannot create directory: ${getErrorMessage(err)}`,
     };
   }
 }
@@ -51,8 +53,7 @@ export async function safeWrite(filePath: string, content: string): Promise<bool
     await Bun.write(filePath, content);
     return true;
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error(`[lgtm] Export write failed: ${filePath}: ${message}`);
+    console.error(`[lgtm] Export write failed: ${filePath}: ${getErrorMessage(err)}`);
     return false;
   }
 }
@@ -63,7 +64,7 @@ type ExportCallback = () => Promise<void>;
  * Creates a debounced exporter that batches write operations.
  * Provides a flush() method to force pending writes immediately.
  */
-export function createDebouncedExporter(delayMs: number = 750) {
+export function createDebouncedExporter(delayMs: number = DEBOUNCE_DELAY_MS) {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let pendingCallback: ExportCallback | null = null;
 

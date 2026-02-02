@@ -1,0 +1,4 @@
+export const TMUX_PANE_SPLIT_RATIO = 0.67;
+export const DEBOUNCE_DELAY_MS = 750;
+export const LINE_CONTENT_MAX_LENGTH = 80;
+export const LINE_CONTENT_TRUNCATE_LENGTH = 77;

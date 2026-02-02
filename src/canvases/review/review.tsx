@@ -1,19 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import path from 'path';
-import type { CanvasOptions, CommentFilter, CommentType, ViewMode } from './types';
-import { COMMENT_TYPE_ORDER, FILTER_OPTIONS } from './constants';
+import type { CanvasOptions, ViewMode } from './types';
 import { useDocument } from './hooks/use-document';
 import { useComments } from './hooks/use-comments';
 import { useNavigation } from './hooks/use-navigation';
 import { useClipboard } from './hooks/use-clipboard';
-import { DocumentViewer } from './components/document-viewer';
+import { DocumentViewer, COMMENT_PANEL_WIDTH } from './components/document-viewer';
 import { CommentPanel } from './components/comment-panel';
 import { CommentForm } from './components/comment-form';
-import { StatusBar } from './components/status-bar';
 import { SummaryView } from './components/summary-view';
 import { HelpOverlay } from './components/help-overlay';
 import { formatFeedbackForExport } from '../../lib/export-formatter';
+import { getErrorMessage } from '../../lib/errors';
 
 interface ReviewCanvasProps {
   filePath: string;
@@ -24,22 +23,19 @@ interface ReviewCanvasProps {
 export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows ?? 24;
-  // Account for UI chrome and tmux overhead
-  const inTmux = !!process.env.TMUX;
-  const visibleHeight = terminalHeight - (inTmux ? 16 : 6);
+  const terminalWidth = stdout?.columns ?? 80;
+  // Account for UI chrome: borders (2) + header (1) + footer (2) + keybindings (1)
+  const visibleHeight = terminalHeight - 6;
+  const documentPanelWidth = terminalWidth - COMMENT_PANEL_WIDTH;
 
   const { document, loading, error } = useDocument(filePath);
   const {
     comments,
-    filter,
-    filteredComments,
-    setFilter,
     addComment,
     updateComment,
     deleteComment,
     toggleResolve,
-    getCommentTypeForLine,
-    getUnresolvedCount,
+    hasCommentOnLine,
     saveComments,
     flushExport,
   } = useComments(document, options?.session, options?.commentsFile, options?.exportOnQuit);
@@ -59,7 +55,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     togglePanel,
     jumpToSelectedComment,
     setScrollOffset,
-  } = useNavigation(document?.lines.length ?? 0, filteredComments);
+  } = useNavigation(document?.lines.length ?? 0, comments);
 
   const { copied, copyToClipboard } = useClipboard();
 
@@ -72,23 +68,14 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   const [exportError, setExportError] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
 
-  // Adjust scroll offset when selected line changes
-  useEffect(() => {
-    if (selectedLine - 1 < scrollOffset) {
-      setScrollOffset(selectedLine - 1);
-    } else if (selectedLine > scrollOffset + visibleHeight) {
-      setScrollOffset(selectedLine - visibleHeight);
-    }
-  }, [selectedLine, scrollOffset, visibleHeight, setScrollOffset]);
-
-  const handleAddComment = useCallback((content: string, type: CommentType) => {
-    addComment(selectedLine, content, type);
+  const handleAddComment = useCallback((content: string) => {
+    addComment(selectedLine, content);
     setShowCommentForm(false);
   }, [addComment, selectedLine]);
 
-  const handleEditComment = useCallback((content: string, type: CommentType) => {
+  const handleEditComment = useCallback((content: string) => {
     if (editingCommentId) {
-      updateComment(editingCommentId, { content, type });
+      updateComment(editingCommentId, { content });
       setEditingCommentId(null);
     }
   }, [editingCommentId, updateComment]);
@@ -116,8 +103,7 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
         setTimeout(() => setExportedPath(null), 3000);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Export failed';
-      setExportError(message);
+      setExportError(getErrorMessage(err, 'Export failed'));
       setTimeout(() => setExportError(null), 5000);
     }
   }, [document, comments, filePath]);
@@ -133,17 +119,13 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
       if (options?.exportOnQuit) {
         await handleExport(options.exportOnQuit);
       }
+      // Clear screen on exit
+      process.stdout.write('\x1b[2J\x1b[H');
       onExit?.();
     };
 
     doExit();
   }, [isExiting, options?.exportOnQuit, handleExport, onExit, flushExport]);
-
-  const cycleFilter = useCallback(() => {
-    const currentIndex = FILTER_OPTIONS.findIndex((opt) => opt.value === filter);
-    const nextIndex = (currentIndex + 1) % FILTER_OPTIONS.length;
-    setFilter(FILTER_OPTIONS[nextIndex]!.value as CommentFilter);
-  }, [filter, setFilter]);
 
   useInput((input, key) => {
     // Handle help overlay
@@ -197,26 +179,6 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
       return;
     }
 
-    if (input === 'f') {
-      cycleFilter();
-      return;
-    }
-
-    // Quick filter keys
-    const filterNum = parseInt(input, 10);
-    if (filterNum >= 0 && filterNum <= 6) {
-      const opt = FILTER_OPTIONS.find((o) => o.key === input);
-      if (opt) {
-        setFilter(opt.value as CommentFilter);
-      }
-      return;
-    }
-
-    if (input === 'u') {
-      setFilter('unresolved');
-      return;
-    }
-
     if (key.tab) {
       togglePanel();
       return;
@@ -243,17 +205,17 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
       } else if (key.return) {
         jumpToSelectedComment();
       } else if (input === 'r' && !options?.readonly) {
-        const comment = filteredComments[selectedCommentIndex];
+        const comment = comments[selectedCommentIndex];
         if (comment) {
           toggleResolve(comment.id);
         }
       } else if (input === 'e' && !options?.readonly) {
-        const comment = filteredComments[selectedCommentIndex];
+        const comment = comments[selectedCommentIndex];
         if (comment) {
           setEditingCommentId(comment.id);
         }
       } else if (input === 'd' && !options?.readonly) {
-        const comment = filteredComments[selectedCommentIndex];
+        const comment = comments[selectedCommentIndex];
         if (comment) {
           setConfirmDelete(comment.id);
         }
@@ -285,48 +247,90 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
     );
   }
 
-  // Help overlay
+  // Help is fullscreen
   if (showHelp) {
-    return <HelpOverlay onClose={() => setShowHelp(false)} />;
+    return <HelpOverlay />;
   }
 
-  // Comment form
+  // Determine what to show in the right panel
+  let rightPanel: React.ReactNode;
+  const formActive = showCommentForm || editingCommentId !== null || confirmDelete !== null;
+
   if (showCommentForm) {
-    const line = document.lines.find((l) => l.number === selectedLine);
-    return (
-      <CommentForm
-        lineNumber={selectedLine}
-        lineContent={line?.content ?? ''}
-        onSubmit={handleAddComment}
-        onCancel={() => setShowCommentForm(false)}
-      />
+    rightPanel = (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor="cyan"
+        width={40}
+        minWidth={40}
+        flexShrink={0}
+      >
+        <Box paddingX={1} borderBottom>
+          <Text bold color="cyan">ADD COMMENT</Text>
+        </Box>
+        <Box flexDirection="column" paddingX={1} flexGrow={1}>
+          <CommentForm
+            lineNumber={selectedLine}
+            onSubmit={handleAddComment}
+            onCancel={() => setShowCommentForm(false)}
+          />
+        </Box>
+      </Box>
     );
-  }
-
-  // Edit comment form
-  if (editingCommentId) {
+  } else if (editingCommentId) {
     const comment = comments.find((c) => c.id === editingCommentId);
     if (comment) {
-      return (
-        <CommentForm
-          lineNumber={comment.lineNumber}
-          lineContent={comment.lineContent}
-          initialType={comment.type}
-          initialContent={comment.content}
-          onSubmit={handleEditComment}
-          onCancel={() => setEditingCommentId(null)}
-        />
+      rightPanel = (
+        <Box
+          flexDirection="column"
+          borderStyle="single"
+          borderColor="cyan"
+          width={40}
+          minWidth={40}
+          flexShrink={0}
+        >
+          <Box paddingX={1} borderBottom>
+            <Text bold color="cyan">EDIT COMMENT</Text>
+          </Box>
+          <Box flexDirection="column" paddingX={1} flexGrow={1}>
+            <CommentForm
+              lineNumber={comment.lineNumber}
+              initialContent={comment.content}
+              onSubmit={handleEditComment}
+              onCancel={() => setEditingCommentId(null)}
+            />
+          </Box>
+        </Box>
       );
     }
-  }
-
-  // Delete confirmation
-  if (confirmDelete) {
-    return (
-      <Box flexDirection="column" borderStyle="single" borderColor="red" padding={1}>
-        <Text bold color="red">Delete Comment?</Text>
-        <Text>Press 'y' to confirm, any other key to cancel</Text>
+  } else if (confirmDelete) {
+    rightPanel = (
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor="red"
+        width={40}
+        minWidth={40}
+        flexShrink={0}
+      >
+        <Box paddingX={1} borderBottom>
+          <Text bold color="red">DELETE COMMENT?</Text>
+        </Box>
+        <Box flexDirection="column" paddingX={1} paddingY={1} flexGrow={1}>
+          <Text>Press 'y' to confirm</Text>
+          <Text dimColor>Any other key to cancel</Text>
+        </Box>
       </Box>
+    );
+  } else {
+    rightPanel = (
+      <CommentPanel
+        comments={comments}
+        selectedIndex={selectedCommentIndex}
+        visibleHeight={visibleHeight}
+        isFocused={focusPanel === 'comments'}
+      />
     );
   }
 
@@ -334,16 +338,12 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   if (viewMode === 'summary') {
     return (
       <Box flexDirection="column">
-        <StatusBar
-          fileName={document.name}
-          filter={filter}
-          totalComments={comments.length}
-          unresolvedCount={getUnresolvedCount()}
-          copied={copied}
-          exported={exportedPath}
-          error={exportError}
-        />
         <SummaryView documentName={document.name} comments={comments} />
+        <Box paddingX={1}>
+          <Text dimColor>
+            v back | y copy | q quit
+          </Text>
+        </Box>
       </Box>
     );
   }
@@ -351,36 +351,27 @@ export function ReviewCanvas({ filePath, options, onExit }: ReviewCanvasProps) {
   // Main document view
   return (
     <Box flexDirection="column">
-      <StatusBar
-        fileName={document.name}
-        filter={filter}
-        totalComments={comments.length}
-        unresolvedCount={getUnresolvedCount()}
-        copied={copied}
-        exported={exportedPath}
-        error={exportError}
-      />
       <Box flexDirection="row" flexGrow={1}>
-        <Box flexGrow={1}>
-          <DocumentViewer
-            document={document}
-            selectedLine={selectedLine}
-            visibleHeight={visibleHeight}
-            scrollOffset={scrollOffset}
-            getCommentTypeForLine={getCommentTypeForLine}
-            isFocused={focusPanel === 'document'}
-          />
-        </Box>
-        <CommentPanel
-          comments={filteredComments}
-          selectedIndex={selectedCommentIndex}
+        <DocumentViewer
+          document={document}
+          selectedLine={selectedLine}
           visibleHeight={visibleHeight}
-          isFocused={focusPanel === 'comments'}
+          scrollOffset={scrollOffset}
+          hasCommentOnLine={hasCommentOnLine}
+          isFocused={focusPanel === 'document' && !formActive}
+          width={documentPanelWidth}
         />
+        {rightPanel}
       </Box>
       <Box paddingX={1}>
         <Text dimColor>
-          j/k scroll | c comment | Tab switch | v summary | ? help | q quit
+          {showCommentForm || editingCommentId
+            ? 'Enter submit | Esc cancel'
+            : confirmDelete
+              ? 'y confirm | any key cancel'
+              : focusPanel === 'comments'
+                ? 'j/k navigate | e edit | d delete | r resolve | Enter jump | Tab switch | q quit'
+                : 'j/k scroll | c comment | Tab switch | v summary | ? help | q quit'}
         </Text>
       </Box>
     </Box>
