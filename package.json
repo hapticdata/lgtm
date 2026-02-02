@@ -13,20 +13,19 @@
   "author": "Kyle Phillips <kyle@haptic-data.com>",
   "type": "module",
   "bin": {
-    "lgtm": "src/cli.ts"
+    "lgtm": "dist/lgtm"
   },
   "files": [
-    "src/",
+    "dist/lgtm",
     "skills/",
     ".claude-plugin/",
     "README.md",
     "LICENSE"
   ],
-  "engines": {
-    "bun": ">=1.0.0"
-  },
   "scripts": {
     "start": "bun run src/cli.ts",
+    "build": "bun build --compile src/cli.ts --outfile dist/lgtm",
+    "prepublishOnly": "bun run build",
     "test": "bun test"
   },
   "dependencies": {

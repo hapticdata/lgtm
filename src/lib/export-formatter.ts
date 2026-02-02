@@ -1,14 +1,9 @@
 import path from 'path';
 import type { Comment, CommentType } from '../canvases/review/types';
-
-const COMMENT_TYPE_ORDER: CommentType[] = [
-  'blocker',
-  'concern',
-  'question',
-  'suggestion',
-  'praise',
-  'acknowledge',
-];
+import { COMMENT_TYPE_ORDER } from '../canvases/review/constants';
+import { getStoragePath } from './storage-utils';
+import { getErrorMessage } from './errors';
+import { LINE_CONTENT_MAX_LENGTH, LINE_CONTENT_TRUNCATE_LENGTH } from './constants';
 
 interface GroupedComments {
   type: CommentType;
@@ -45,7 +40,9 @@ function getTypeHeading(type: CommentType): string {
 }
 
 function escapeLineContent(content: string): string {
-  const truncated = content.length > 80 ? content.slice(0, 77) + '...' : content;
+  const truncated = content.length > LINE_CONTENT_MAX_LENGTH
+    ? content.slice(0, LINE_CONTENT_TRUNCATE_LENGTH) + '...'
+    : content;
   return truncated.replace(/`/g, '\\`');
 }
 
@@ -140,13 +137,6 @@ interface StoredComment {
   resolved: boolean;
 }
 
-function getStoragePath(filePath: string, session?: string): string {
-  const basename = path.basename(filePath, path.extname(filePath));
-  const dir = path.dirname(filePath);
-  const sessionSuffix = session ? `-${session}` : '';
-  return path.join(dir, `.lgtm-${basename}${sessionSuffix}.json`);
-}
-
 export async function exportComments(
   filePath: string,
   options: { session?: string; commentsFile?: string; format?: string }
@@ -173,6 +163,6 @@ export async function exportComments(
     const documentName = path.basename(filePath);
     return formatFeedbackForExport(documentName, comments);
   } catch (err) {
-    return `Error loading comments: ${err instanceof Error ? err.message : 'Unknown error'}`;
+    return `Error loading comments: ${getErrorMessage(err)}`;
   }
 }

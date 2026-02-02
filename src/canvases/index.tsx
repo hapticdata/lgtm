@@ -21,7 +21,8 @@ export async function renderCanvas(
           unmount();
           resolve();
         }}
-      />
+      />,
+      { incrementalRendering: true }
     );
 
     waitUntilExit().then(resolve);
