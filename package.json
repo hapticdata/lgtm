@@ -18,6 +18,8 @@
   "files": [
     "src/",
     "skills/",
+    "hooks/",
+    "scripts/",
     ".claude-plugin/",
     "README.md",
     "LICENSE"

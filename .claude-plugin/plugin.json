@@ -1,0 +1,23 @@
+{
+  "name": "lgtm",
+  "description": "TUI for reviewing documents with line-by-line commenting. Review AI-generated plans, code proposals, or any text document with structured feedback using comment types like Blocker, Concern, Question, Suggestion, Praise, and Acknowledge.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Kyle Phillips",
+    "email": "kyle@haptic-data.com"
+  },
+  "homepage": "https://github.com/hapticdata/lgtm",
+  "repository": "https://github.com/hapticdata/lgtm",
+  "license": "MIT",
+  "keywords": [
+    "review",
+    "tui",
+    "feedback",
+    "code-review",
+    "comments",
+    "markdown",
+    "terminal",
+    "claude-code"
+  ],
+  "hooks": "./hooks/hooks.json"
+}
