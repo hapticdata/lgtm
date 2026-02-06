@@ -1,0 +1,6 @@
+{
+  "name": "lgtm",
+  "description": "TUI for reviewing documents with line-by-line commenting",
+  "version": "0.1.0",
+  "skills": "./skills/"
+}

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "lgtuim",
+      "name": "lgtm",
       "dependencies": {
         "commander": "^14.0.2",
         "ink": "^6.6.0",

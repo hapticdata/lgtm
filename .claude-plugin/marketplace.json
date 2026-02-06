@@ -5,7 +5,7 @@
     "email": "kyle@haptic-data.com"
   },
   "metadata": {
-    "description": "LGTuiM skills for Claude Code",
+    "description": "lgtm skills for Claude Code",
     "version": "0.1.0"
   },
   "plugins": [

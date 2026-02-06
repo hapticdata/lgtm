@@ -2,7 +2,7 @@
 name: lgtm
 description: Launch lgtm TUI to review a markdown file with line-by-line commenting
 argument-hint: <file-path> [--stdin]
-allowed-tools: Bash(lgtm *), Bash(tmux *), Read
+allowed-tools: Bash(bun run *), Bash(bunx *), Bash(tmux *), Read
 ---
 
 Launch lgtm to review the specified markdown file or piped content.
@@ -28,10 +28,15 @@ When this skill is invoked, follow these steps:
 2. **Resolve path**: Convert the file path to an absolute path if it isn't already.
 3. **Read the file**: Use the Read tool to load the full file content into context. This is essential so you can correlate the user's line-level comments with actual file content.
 4. **Create export path**: Generate `/tmp/lgtm-export-{basename-without-extension}.md`
-5. **Run the TUI**: Execute the command below. The `--export-on-quit` flag automatically enables tmux mode and waits for the user to quit.
-   ```bash
-   lgtm "<resolved-file-path>" --export-on-quit "<export-path>"
-   ```
+5. **Run the TUI**: Check if `${CLAUDE_PLUGIN_ROOT}/node_modules` exists to determine the run command. The `--export-on-quit` flag automatically enables tmux mode and waits for the user to quit.
+   - If `${CLAUDE_PLUGIN_ROOT}/node_modules` exists (local dev):
+     ```bash
+     bun run ${CLAUDE_PLUGIN_ROOT}/src/cli.ts "<resolved-file-path>" --export-on-quit "<export-path>"
+     ```
+   - If `node_modules` does not exist (marketplace install):
+     ```bash
+     bunx @hapticdata/lgtm "<resolved-file-path>" --export-on-quit "<export-path>"
+     ```
 6. **Read the export**: After the command returns (user has quit the TUI), use the Read tool to read the export file.
 7. **Respond in review mode**: This is a collaborative review workflow. After reading the export:
    - Correlate each comment with the corresponding line(s) from the original file content you read in step 3.

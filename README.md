@@ -13,24 +13,60 @@ A terminal UI for reviewing documents with line-by-line commenting. Perfect for 
 
 ## Installation
 
+### Quick Start (No Install)
+
+Run lgtm directly without installing:
+
+```bash
+bunx @hapticdata/lgtm document.md
+```
+
+### Marketplace Installation (Recommended)
+
+Install lgtm as a Claude Code plugin from the marketplace:
+
+```bash
+# In Claude Code, run these commands:
+/plugin marketplace add hapticdata/lgtm
+/plugin install lgtm@lgtm
+
+```
+
+Or locally after cloning the repository:
+
+```bash
+claude plugin install lgtm --plugin-dir .
+```
+
+Once installed, you can use these skills:
+
+- `/lgtm <file>` - Review a file with line-by-line commenting
+- `/lgtm-context` - Review Claude's last response
+- `/lgtm-plan` - Review the current plan file
+
+The plugin automatically spawns a tmux pane for side-by-side review. When you quit (press `q`), your feedback is sent back to Claude for discussion.
+
+### Global CLI Installation (Optional)
+
+For standalone command-line usage without Claude Code:
+
 ```bash
 bun install
 bun link
 ```
-as a Claude Skill:
 
+Then use the `lgtm` command directly:
+
+```bash
+lgtm document.md
 ```
-claude --plugin-dir /path/to/lgtm
-```
 
-### Claude Skills
+### Requirements
 
-- `/lgtm <file>` spawn a tmux pane to review a file, the file will be read by claude first, then when you hit `q` to finish your review claude will receive your feedback.
+- [Bun](https://bun.sh) v1.0.0 or later (required)
+- tmux (optional, for side-by-side review with Claude Code)
 
-- `/lgtm-plan` when in planning mode with claude this will open the current plan in a tmux pane
-- `/lgtm-context` load the last message claude sent you in a tmux pane
-
-Requires [Bun](https://bun.sh) v1.0.0 or later.
+**Why Bun?** lgtm uses Bun-specific APIs (`Bun.file()`, `Bun.write()`, `Bun.stdin`) for better performance and simpler code. These APIs are not available in Node.js or other runtimes.
 
 ## Usage
 

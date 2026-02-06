@@ -1,5 +1,5 @@
 {
-  "name": "lgtm",
+  "name": "@hapticdata/lgtm",
   "version": "0.1.0",
   "description": "TUI for reviewing documents with line-by-line commenting",
   "keywords": ["cli", "tui", "review", "comments", "markdown", "terminal", "claude-code", "code-review", "feedback"],
@@ -11,6 +11,10 @@
   "bugs": "https://github.com/hapticdata/lgtm/issues",
   "license": "MIT",
   "author": "Kyle Phillips <kyle@haptic-data.com>",
+  "claude": {
+    "plugin": true,
+    "skills": ["lgtm", "lgtm-context", "lgtm-plan"]
+  },
   "type": "module",
   "bin": {
     "lgtm": "src/cli.ts"
@@ -25,9 +29,13 @@
   "engines": {
     "bun": ">=1.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "bun run src/cli.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "bun test"
   },
   "dependencies": {
     "commander": "^14.0.2",
