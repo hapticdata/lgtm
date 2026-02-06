@@ -5,15 +5,46 @@
     "email": "kyle@haptic-data.com"
   },
   "metadata": {
-    "description": "lgtm skills for Claude Code",
+    "description": "lgtm - TUI for reviewing documents with line-by-line commenting in Claude Code",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "lgtm",
-      "description": "TUI for reviewing documents with line-by-line commenting",
+      "description": "TUI for reviewing documents with line-by-line commenting. Review AI-generated plans, code proposals, or any text document with structured feedback.",
       "source": "./",
-      "strict": false
+      "strict": false,
+      "version": "0.1.0",
+      "author": {
+        "name": "Kyle Phillips",
+        "email": "kyle@haptic-data.com"
+      },
+      "homepage": "https://github.com/hapticdata/lgtm",
+      "repository": "https://github.com/hapticdata/lgtm",
+      "license": "MIT",
+      "keywords": [
+        "review",
+        "tui",
+        "feedback",
+        "code-review",
+        "comments",
+        "markdown",
+        "terminal",
+        "claude-code"
+      ],
+      "category": "productivity",
+      "tags": [
+        "review",
+        "feedback",
+        "tui",
+        "code-review",
+        "document-review"
+      ],
+      "skills": [
+        "./skills/lgtm",
+        "./skills/lgtm-plan",
+        "./skills/lgtm-context"
+      ]
     }
   ]
 }

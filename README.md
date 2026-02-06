@@ -20,6 +20,8 @@ Run lgtm directly without installing:
 ```bash
 bunx @hapticdata/lgtm document.md
 ```
+- Requires [Bun](https://bun.sh) v1.0.0 or later.
+- Claude Code Skill integration requires being inside `tmux`
 
 ### Marketplace Installation (Recommended)
 
@@ -38,11 +40,13 @@ Or locally after cloning the repository:
 claude plugin install lgtm --plugin-dir .
 ```
 
-Once installed, you can use these skills:
+### Claude Code Skills
 
-- `/lgtm <file>` - Review a file with line-by-line commenting
-- `/lgtm-context` - Review Claude's last response
-- `/lgtm-plan` - Review the current plan file
+Once installed, three skills are available:
+
+- `/lgtm <file>` - Open a file in the review TUI. Claude reads the file first, then spawns lgtm in a tmux pane. When you quit (`q`), Claude receives your feedback and responds to it.
+- `/lgtm-plan` - Review the current plan file in the TUI after Claude generates a plan.
+- `/lgtm-context` - Load Claude's last response into the TUI for line-by-line review.
 
 The plugin automatically spawns a tmux pane for side-by-side review. When you quit (press `q`), your feedback is sent back to Claude for discussion.
 
