@@ -9,7 +9,6 @@
         "ink": "^6.6.0",
         "ink-text-input": "^6.0.0",
         "react": "^19.2.3",
-        "react-devtools-core": "^7.0.1",
       },
       "devDependencies": {
         "@types/bun": "latest",
