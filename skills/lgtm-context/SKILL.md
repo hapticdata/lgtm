@@ -1,6 +1,7 @@
 ---
 name: lgtm-context
-description: Review Claude's last response in lgtm for line-by-line feedback
+description: >-
+  Launch lgtm TUI to review Claude's last response with line-by-line commenting and feedback. Use when reviewing AI output, giving structured feedback on generated content, or when the user says "review this", "lgtm", "line-by-line feedback", "comment on response".
 allowed-tools: Bash(bun run *), Bash(bunx *), Bash(tmux *), Read
 ---
 
